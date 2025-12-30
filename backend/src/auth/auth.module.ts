@@ -6,17 +6,19 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '../entities/user.entity';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
+import { JwtStrategy } from './jwt.strategy'; 
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User]), // บอกว่าจะใช้ตาราง User
-    PassportModule,
+    TypeOrmModule.forFeature([User]),
+    PassportModule.register({ defaultStrategy: 'jwt' }), 
     JwtModule.register({
-      secret: 'SECRET_KEY_NAJA', // ของจริงควรใช้ .env [cite: 18]
-      signOptions: { expiresIn: '1h' }, // Token หมดอายุใน 1 ชม.
+      secret: 'SECRET_KEY_NAJA',
+      signOptions: { expiresIn: '1h' },
     }),
   ],
-  providers: [AuthService],
+  providers: [AuthService, JwtStrategy], 
   controllers: [AuthController],
+  exports: [JwtStrategy, PassportModule], 
 })
 export class AuthModule {}
