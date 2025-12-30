@@ -1,21 +1,22 @@
-// src/auth/jwt.strategy.ts
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { User } from '../entities/user.entity'; // ตรวจสอบ path ว่าถูกต้อง (ถ้าย้าย folder entities แล้ว)
+import { User } from '../entities/user.entity'; 
+import { ConfigService } from '@nestjs/config'; 
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    private configService: ConfigService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: 'SECRET_KEY_NAJA', 
+      secretOrKey: configService.getOrThrow<string>('JWT_SECRET'), 
     });
   }
 
