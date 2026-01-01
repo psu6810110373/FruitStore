@@ -21,13 +21,21 @@ export class AuthService {
       throw new ConflictException('Username already exists');
     }
 
+    const ADMIN_USERNAME = 'admin';
+    const ADMIN_PASSWORD = '1234'
+
+    let role = UserRole.USER
+    if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+        role = UserRole.ADMIN;
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = this.usersRepository.create({
       username,
       password: hashedPassword,
       // 2. แก้ตรงนี้! จาก 'USER' เป็น UserRole.USER
-      role: UserRole.USER, 
+      role: role, 
     });
 
     return this.usersRepository.save(user);
