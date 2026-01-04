@@ -1,39 +1,59 @@
 import { useState, useEffect } from 'react';
 import Login from './Login';
+import FruitList from './FruitList';
 
 function App() {
   const [token, setToken] = useState<string | null>(null);
 
-  // โหลด Token เก่าจาก LocalStorage (ถ้ามี) ตอนเปิดเว็บ
+  // โหลด Token จาก LocalStorage เมื่อเปิดเว็บ
   useEffect(() => {
     const savedToken = localStorage.getItem('token');
-    if (savedToken) setToken(savedToken);
+    if (savedToken) {
+      setToken(savedToken);
+    }
   }, []);
 
-  // ฟังก์ชัน Logout
+  // ฟังก์ชันออกจากระบบ
   const handleLogout = () => {
-    setToken(null);
     localStorage.removeItem('token');
+    setToken(null);
+    window.location.reload(); // รีโหลดหน้าเว็บเพื่อให้เคลียร์ค่าทุกอย่างสะอาดจริงๆ
+  };
+
+  // ฟังก์ชันจำลองการใส่ตะกร้า (เดี๋ยวมาทำจริงต่อ)
+  const handleAddToCart = (fruit: any) => {
+    alert(`🛒 เพิ่ม "${fruit.name}" ลงตะกร้าแล้ว!`);
   };
 
   return (
-    <div style={{ padding: 20, fontFamily: 'sans-serif' }}>
-      <h1>🍊 Fruit Store Frontend</h1>
+    <div style={{ fontFamily: 'sans-serif', maxWidth: '1000px', margin: '0 auto', padding: '20px' }}>
+      
+      {/* ส่วนหัว Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30, borderBottom: '1px solid #eee', paddingBottom: 10 }}>
+        <h1 style={{ margin: 0, color: '#ff6b6b' }}>🍊 Fruit Store</h1>
+        {token && (
+          <button 
+            onClick={handleLogout} 
+            style={{ 
+              backgroundColor: '#dc3545', color: 'white', border: 'none', 
+              padding: '8px 15px', borderRadius: '5px', cursor: 'pointer' 
+            }}
+          >
+            Logout 🚪
+          </button>
+        )}
+      </div>
 
-      {/* เช็คว่ามี Token หรือยัง? */}
+      {/* เงื่อนไขการแสดงผล */}
       {!token ? (
-        // ถ้ายังไม่มี -> โชว์หน้า Login
         <Login setToken={setToken} />
       ) : (
-        // ถ้ามีแล้ว -> โชว์หน้าเนื้อหา (เดี๋ยวเรามาทำรายการผลไม้ตรงนี้)
         <div>
-          <h3>ยินดีต้อนรับ! คุณเข้าสู่ระบบแล้ว ✅</h3>
-          <p>Token: {token.substring(0, 20)}...</p>
-          <button onClick={handleLogout} style={{ background: 'red', color: 'white', border: 'none', padding: '5px 10px' }}>
-            Logout
-          </button>
+          {/* ส่ง Token ไปให้ FruitList ใช้ยิง API */}
+          <FruitList token={token} onAddToCart={handleAddToCart} />
         </div>
       )}
+
     </div>
   );
 }
