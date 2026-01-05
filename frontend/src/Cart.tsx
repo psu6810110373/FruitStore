@@ -1,5 +1,6 @@
 import React from 'react';
 
+// Interface ของสินค้าในตะกร้า
 export interface CartItem {
   id: number;
   name: string;
@@ -7,6 +8,7 @@ export interface CartItem {
   quantity: number;
 }
 
+// Interface ของ Props ที่รับมาจาก App.tsx
 interface CartProps {
   cart: CartItem[];
   onRemove: (id: number) => void;
@@ -16,8 +18,14 @@ interface CartProps {
 }
 
 export default function Cart({ cart, onRemove, onCheckout, onIncrease, onDecrease }: CartProps) {
+  // 1. คำนวณราคารวม
   const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
+  // 🟢 2. สร้างตัวแปรใหม่ที่ "เรียงลำดับตามชื่อ (A-Z)" เรียบร้อยแล้ว
+  // (ใช้ localeCompare เพื่อให้รองรับทั้งภาษาไทยและอังกฤษ)
+  const sortedCart = [...cart].sort((a, b) => a.name.localeCompare(b.name));
+
+  // กรณีตะกร้าว่าง
   if (cart.length === 0) {
     return (
       <div style={{ marginTop: 20, padding: 30, border: '2px dashed #ccc', borderRadius: 10, textAlign: 'center', color: '#999' }}>
@@ -32,42 +40,58 @@ export default function Cart({ cart, onRemove, onCheckout, onIncrease, onDecreas
       <h2 style={{ borderBottom: '1px solid #eee', paddingBottom: 15, marginTop: 0 }}>🛒 ตะกร้าของฉัน</h2>
       
       <ul style={{ listStyle: 'none', padding: 0 }}>
-        {cart.map(item => (
+        {/* 🟢 3. ใช้ sortedCart (ที่เรียงแล้ว) มาวนลูปแสดงผลแทน cart เฉยๆ */}
+        {sortedCart.map(item => (
           <li key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15, paddingBottom: 15, borderBottom: '1px solid #f0f0f0' }}>
             
+            {/* ชื่อสินค้า */}
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 'bold', fontSize: '1.1em' }}>{item.name}</div>
               <div style={{ color: '#888', fontSize: '0.9em' }}>@{item.price} บาท</div>
             </div>
 
+            {/* ปุ่มบวก/ลบ */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginRight: '15px' }}>
               <button onClick={() => onDecrease(item.id)} style={btnStyle}>-</button>
+              
               <span style={{ fontWeight: 'bold', minWidth: '20px', textAlign: 'center' }}>{item.quantity}</span>
+              
               <button onClick={() => onIncrease(item.id)} style={{...btnStyle, color: '#28a745'}}>+</button>
             </div>
 
+            {/* ราคารวม + ปุ่มลบ */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '5px' }}>
               <span style={{ fontWeight: 'bold', color: '#333' }}>฿{item.price * item.quantity}</span>
-              <button onClick={() => onRemove(item.id)} style={{ background: 'transparent', color: '#999', border: 'none', cursor: 'pointer', fontSize: '0.8em', textDecoration: 'underline' }}>ลบ</button>
+              <button 
+                onClick={() => onRemove(item.id)} 
+                style={{ background: 'transparent', color: '#999', border: 'none', cursor: 'pointer', fontSize: '0.8em', textDecoration: 'underline' }}
+              >
+                ลบ
+              </button>
             </div>
 
           </li>
         ))}
       </ul>
 
+      {/* ยอดรวมทั้งหมด */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 25, fontSize: '1.2em', fontWeight: 'bold', borderTop: '2px solid #eee', paddingTop: 15 }}>
         <span>ยอดรวมทั้งหมด:</span>
         <span style={{ color: '#28a745', fontSize: '1.3em' }}>฿{total}</span>
       </div>
 
-      <button onClick={onCheckout} style={{ width: '100%', marginTop: 20, padding: 15, background: 'linear-gradient(to right, #28a745, #218838)', color: 'white', border: 'none', borderRadius: 8, fontSize: '1.1em', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 4px 6px rgba(40, 167, 69, 0.2)' }}>
+      {/* ปุ่ม Checkout */}
+      <button 
+        onClick={onCheckout} 
+        style={{ width: '100%', marginTop: 20, padding: 15, background: 'linear-gradient(to right, #28a745, #218838)', color: 'white', border: 'none', borderRadius: 8, fontSize: '1.1em', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 4px 6px rgba(40, 167, 69, 0.2)' }}
+      >
         ยืนยันการสั่งซื้อ (Checkout) ✅
       </button>
     </div>
   );
 }
 
-// สไตล์ปุ่มวงกลม
+// สไตล์ปุ่มวงกลม (แยกออกมาให้โค้ดดูสะอาด)
 const btnStyle = {
   width: 30, height: 30, borderRadius: '50%', border: '1px solid #ddd', background: 'white', cursor: 'pointer', fontWeight: 'bold', color: '#ff4d4d'
 };
