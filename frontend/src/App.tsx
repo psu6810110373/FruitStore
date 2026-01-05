@@ -1,17 +1,13 @@
 import { useState, useEffect } from 'react';
 import Login from './Login';
 import FruitList from './FruitList';
-import Cart, {type CartItem } from './Cart'; // 👈 import Cart มาใช้
+import Cart, {type CartItem } from './Cart';
 
 function App() {
   const [token, setToken] = useState<string | null>(null);
-  
-  // 1. สร้าง State สำหรับเก็บตะกร้า
   const [cart, setCart] = useState<CartItem[]>([]);
-  
-  // ตัวแปรสำหรับสลับหน้า (true=ดูตะกร้า, false=ดูสินค้า)
-  const [showCart, setShowCart] = useState(false);
 
+  // โหลด Token
   useEffect(() => {
     const savedToken = localStorage.getItem('token');
     if (savedToken) setToken(savedToken);
@@ -20,31 +16,55 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem('token');
     setToken(null);
+    setCart([]);
     window.location.reload();
   };
 
-  // 2. Logic เพิ่มของลงตะกร้า (หัวใจสำคัญ ❤️)
+  // ✅ 1. เพิ่มสินค้า (ใช้สำหรับหน้า FruitList)
   const handleAddToCart = (fruit: any) => {
     setCart((prevCart) => {
-      // เช็คว่ามีสินค้านี้ในตะกร้าหรือยัง?
-      const existingItem = prevCart.find(item => item.id === fruit.id);
-
+      const existingItem = prevCart.find((item) => item.id === fruit.id);
       if (existingItem) {
-        // ถ้ามีแล้ว -> ให้บวกจำนวนเพิ่ม (+1)
-        return prevCart.map(item =>
+        return prevCart.map((item) =>
           item.id === fruit.id ? { ...item, quantity: item.quantity + 1 } : item
         );
       } else {
-        // ถ้ายังไม่มี -> เพิ่มสินค้าใหม่เข้าไป และเซ็ตจำนวนเป็น 1
-        return [...prevCart, { id: fruit.id, name: fruit.name, price: fruit.price, quantity: 1 }];
+        return [...prevCart, { ...fruit, quantity: 1 }];
       }
     });
-    alert(`เพิ่ม ${fruit.name} ลงตะกร้าแล้ว! 🛒`);
   };
 
-  // 3. Logic ลบของออกจากตะกร้า
+  // ✅ 2. เพิ่มจำนวน (ปุ่ม + ในตะกร้า)
+  const handleIncrease = (id: number) => {
+    setCart((prevCart) =>
+      prevCart.map((item) =>
+        item.id === id ? { ...item, quantity: item.quantity + 1 } : item
+      )
+    );
+  };
+
+  // ✅ 3. ลดจำนวน (ปุ่ม - ในตะกร้า)
+  const handleDecrease = (id: number) => {
+    setCart((prevCart) =>
+      prevCart
+        .map((item) => {
+          if (item.id === id) {
+            return { ...item, quantity: item.quantity - 1 };
+          }
+          return item;
+        })
+        .filter((item) => item.quantity > 0) // ถ้าเหลือ 0 ให้ลบทิ้งไปเลย
+    );
+  };
+
   const handleRemoveFromCart = (id: number) => {
-    setCart(prev => prev.filter(item => item.id !== id));
+    setCart((prevCart) => prevCart.filter((item) => item.id !== id));
+  };
+
+  const handleCheckout = () => {
+    if (confirm(`ยืนยันการสั่งซื้อยอดรวม ${cart.reduce((sum, item) => sum + item.price * item.quantity, 0)} บาท?`)) {
+      alert("เตรียมเชื่อมต่อ API สั่งซื้อครับ! 🚀");
+    }
   };
 
   return (
@@ -53,21 +73,10 @@ function App() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30, borderBottom: '1px solid #eee', paddingBottom: 10 }}>
         <h1 style={{ margin: 0, color: '#ff6b6b' }}>🍊 Fruit Store</h1>
-        
         {token && (
-          <div style={{ display: 'flex', gap: 10 }}>
-             {/* ปุ่มสลับดูตะกร้า */}
-            <button 
-              onClick={() => setShowCart(!showCart)}
-              style={{ padding: '8px 15px', borderRadius: 5, cursor: 'pointer', background: '#007bff', color: 'white', border: 'none' }}
-            >
-              {showCart ? '🏠 กลับหน้าร้าน' : `🛒 ตะกร้าสินค้า (${cart.reduce((a,b)=>a+b.quantity,0)})`}
-            </button>
-
-            <button 
-              onClick={handleLogout} 
-              style={{ backgroundColor: '#dc3545', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '5px', cursor: 'pointer' }}
-            >
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <span>ตะกร้า: <b>{cart.reduce((s, i) => s + i.quantity, 0)}</b> ชิ้น</span>
+            <button onClick={handleLogout} style={{ backgroundColor: '#dc3545', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '5px', cursor: 'pointer' }}>
               Logout 🚪
             </button>
           </div>
@@ -77,18 +86,23 @@ function App() {
       {!token ? (
         <Login setToken={setToken} />
       ) : (
-        <div>
-          {/* เลือกแสดงผลตามปุ่มที่กด */}
-          {showCart ? (
-             <Cart 
-               items={cart} 
-               token={token} 
-               onClearCart={() => setCart([])} 
-               onRemoveItem={handleRemoveFromCart}
-             />
-          ) : (
-             <FruitList token={token} onAddToCart={handleAddToCart} />
-          )}
+        <div style={{ display: 'flex', gap: '40px', flexDirection: 'row-reverse' }}>
+          
+          {/* ส่งฟังก์ชันเพิ่ม/ลด ไปให้ Cart */}
+          <div style={{ flex: 1, minWidth: '350px' }}>
+            <Cart 
+              cart={cart} 
+              onRemove={handleRemoveFromCart} 
+              onCheckout={handleCheckout} 
+              onIncrease={handleIncrease} // 👈 ส่งเพิ่ม
+              onDecrease={handleDecrease} // 👈 ส่งเพิ่ม
+            />
+          </div>
+
+          <div style={{ flex: 2 }}>
+            <FruitList token={token} onAddToCart={handleAddToCart} />
+          </div>
+
         </div>
       )}
 

@@ -1,6 +1,5 @@
-import axios from 'axios';
+import React from 'react';
 
-// หน้าตาของสินค้าในตะกร้า (เหมือน Fruit แต่มี quantity เพิ่มมา)
 export interface CartItem {
   id: number;
   name: string;
@@ -9,92 +8,84 @@ export interface CartItem {
 }
 
 interface CartProps {
-  items: CartItem[];
-  token: string;
-  onClearCart: () => void;
-  onRemoveItem: (id: number) => void;
+  cart: CartItem[];
+  onRemove: (id: number) => void;
+  onCheckout: () => void;
+  onIncrease: (id: number) => void; // 👈 รับ function มา
+  onDecrease: (id: number) => void; // 👈 รับ function มา
 }
 
-export default function Cart({ items, token, onClearCart, onRemoveItem }: CartProps) {
-  
-  // คำนวณราคารวมทั้งหมด
-  const totalPrice = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+export default function Cart({ cart, onRemove, onCheckout, onIncrease, onDecrease }: CartProps) {
+  const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
-  // ฟังก์ชันสั่งซื้อ (Checkout) ยิง API ไป Backend
-  const handleCheckout = async () => {
-    if (items.length === 0) return;
-
-    // แปลงข้อมูลให้ตรงกับที่ Backend ต้องการ (items: [{ fruitId, quantity }])
-    const orderData = {
-      items: items.map(item => ({
-        fruitId: item.id,
-        quantity: item.quantity
-      }))
-    };
-
-    try {
-      await axios.post('http://localhost:3000/orders', orderData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      alert('✅ สั่งซื้อสำเร็จ! ขอบคุณที่ใช้บริการครับ');
-      onClearCart(); // ล้างตะกร้าหลังซื้อเสร็จ
-    } catch (error) {
-      console.error(error);
-      alert('❌ สั่งซื้อล้มเหลว กรุณาลองใหม่');
-    }
-  };
-
-  if (items.length === 0) {
-    return <div style={{ padding: 20, textAlign: 'center', color: '#888' }}>🛒 ตะกร้ายังว่างอยู่ครับ</div>;
+  if (cart.length === 0) {
+    return (
+      <div style={{ marginTop: 20, padding: 30, border: '2px dashed #ccc', borderRadius: 10, textAlign: 'center', color: '#999' }}>
+        <h3>ตะกร้าว่างเปล่า 🛒</h3>
+        <p>ไปเลือกผลไม้กันเถอะ!</p>
+      </div>
+    );
   }
 
   return (
-    <div style={{ padding: 20, border: '1px solid #ddd', borderRadius: 10, marginTop: 20, backgroundColor: '#f9f9f9' }}>
-      <h2>🛒 ตะกร้าสินค้าของคุณ</h2>
+    <div style={{ marginTop: 0, padding: 20, border: '1px solid #ddd', borderRadius: 10, backgroundColor: '#fff', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+      <h2 style={{ borderBottom: '1px solid #eee', paddingBottom: 15, marginTop: 0 }}>🛒 ตะกร้าของฉัน</h2>
       
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr style={{ borderBottom: '1px solid #ccc', textAlign: 'left' }}>
-            <th style={{ padding: 8 }}>สินค้า</th>
-            <th style={{ padding: 8 }}>ราคา</th>
-            <th style={{ padding: 8 }}>จำนวน</th>
-            <th style={{ padding: 8 }}>รวม</th>
-            <th style={{ padding: 8 }}>ลบ</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map(item => (
-            <tr key={item.id} style={{ borderBottom: '1px solid #eee' }}>
-              <td style={{ padding: 8 }}>{item.name}</td>
-              <td style={{ padding: 8 }}>฿{item.price}</td>
-              <td style={{ padding: 8 }}>x {item.quantity}</td>
-              <td style={{ padding: 8 }}>฿{item.price * item.quantity}</td>
-              <td style={{ padding: 8 }}>
-                <button 
-                  onClick={() => onRemoveItem(item.id)}
-                  style={{ color: 'red', border: 'none', background: 'none', cursor: 'pointer' }}
-                >
-                  ❌
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <ul style={{ listStyle: 'none', padding: 0 }}>
+        {cart.map(item => (
+          <li key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15, paddingBottom: 15, borderBottom: '1px solid #f0f0f0' }}>
+            
+            {/* ชื่อสินค้า */}
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 'bold', fontSize: '1.1em' }}>{item.name}</div>
+              <div style={{ color: '#888', fontSize: '0.9em' }}>@{item.price} บาท</div>
+            </div>
 
-      <div style={{ marginTop: 20, textAlign: 'right' }}>
-        <h3>ราคารวมทั้งสิ้น: <span style={{ color: 'green' }}>฿{totalPrice}</span></h3>
-        <button 
-          onClick={handleCheckout}
-          style={{ 
-            backgroundColor: '#28a745', color: 'white', border: 'none', 
-            padding: '10px 20px', borderRadius: 5, fontSize: '1.1em', cursor: 'pointer' 
-          }}
-        >
-          💳 ยืนยันการสั่งซื้อ
-        </button>
+            {/* 🎮 ปุ่มปรับจำนวน */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginRight: '15px' }}>
+              <button 
+                onClick={() => onDecrease(item.id)}
+                style={{ width: 30, height: 30, borderRadius: '50%', border: '1px solid #ddd', background: 'white', cursor: 'pointer', fontWeight: 'bold', color: '#ff4d4d' }}
+              >
+                -
+              </button>
+              
+              <span style={{ fontWeight: 'bold', minWidth: '20px', textAlign: 'center' }}>{item.quantity}</span>
+              
+              <button 
+                onClick={() => onIncrease(item.id)}
+                style={{ width: 30, height: 30, borderRadius: '50%', border: '1px solid #ddd', background: 'white', cursor: 'pointer', fontWeight: 'bold', color: '#28a745' }}
+              >
+                +
+              </button>
+            </div>
+
+            {/* ราคารวมของชิ้นนั้น & ปุ่มลบ */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '5px' }}>
+              <span style={{ fontWeight: 'bold', color: '#333' }}>฿{item.price * item.quantity}</span>
+              <button 
+                onClick={() => onRemove(item.id)} 
+                style={{ background: 'transparent', color: '#999', border: 'none', cursor: 'pointer', fontSize: '0.8em', textDecoration: 'underline' }}
+              >
+                ลบ
+              </button>
+            </div>
+
+          </li>
+        ))}
+      </ul>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 25, fontSize: '1.2em', fontWeight: 'bold', borderTop: '2px solid #eee', paddingTop: 15 }}>
+        <span>ยอดรวมทั้งหมด:</span>
+        <span style={{ color: '#28a745', fontSize: '1.3em' }}>฿{total}</span>
       </div>
+
+      <button 
+        onClick={onCheckout} 
+        style={{ width: '100%', marginTop: 20, padding: 15, background: 'linear-gradient(to right, #28a745, #218838)', color: 'white', border: 'none', borderRadius: 8, fontSize: '1.1em', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 4px 6px rgba(40, 167, 69, 0.2)' }}
+      >
+        ยืนยันการสั่งซื้อ (Checkout) ✅
+      </button>
     </div>
   );
 }
