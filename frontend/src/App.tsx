@@ -2,177 +2,119 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import Login from './Login';
 import FruitList from './FruitList';
-import Cart, {type CartItem } from './Cart';
+import Cart, { type CartItem } from './Cart';
 import MyOrders from './MyOrders';
 
 function App() {
-  // --- State หลัก ---
   const [token, setToken] = useState<string | null>(null);
-  const [currentUser, setCurrentUser] = useState<string>(''); // เก็บชื่อคนล็อกอิน
   const [cart, setCart] = useState<CartItem[]>([]);
   const [page, setPage] = useState<'shop' | 'orders'>('shop');
+  const [isAdmin, setIsAdmin] = useState(false); // ✅ สถานะ Admin
 
-  // --- State สำหรับ Admin เพิ่มสินค้า ---
-  const [newFruit, setNewFruit] = useState({ name: '', price: 0, description: '', stock: 0 });
-  const [isFormVisible, setIsFormVisible] = useState(false); // เปิด/ปิดฟอร์ม
-
-  // 1. โหลดข้อมูลเมื่อเปิดเว็บ (Token & Username)
-  useEffect(() => {
-    const savedToken = localStorage.getItem('token');
-    const savedUser = localStorage.getItem('username');
-    
-    if (savedToken) setToken(savedToken);
-    if (savedUser) setCurrentUser(savedUser);
-  }, []);
-
-  // 2. ฟังก์ชัน Logout
-  const handleLogout = () => {
-    localStorage.clear(); // ล้างทุกอย่าง
-    setToken(null);
-    setCurrentUser('');
-    setCart([]);
-    setPage('shop')
-    window.location.reload(); // รีโหลดล้างค่าทุกอย่าง
-  };
-
-  // ✅ 3. เช็คว่าเป็น Admin หรือไม่? (ใช้ .toLowerCase เผื่อพิมพ์ตัวใหญ่เล็ก)
-  const isAdmin = currentUser?.toLowerCase() === 'admin'; 
-
-  // --- ฟังก์ชันเพิ่มสินค้า (Admin Only) ---
-  const handleAddFruit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // ฟังก์ชันแกะ Token เพื่อดูว่าใคร Login
+  const parseJwt = (token: string) => {
     try {
-      await axios.post('http://localhost:3000/fruits', newFruit, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      alert(`เพิ่ม "${newFruit.name}" สำเร็จ! ✅`);
-      setNewFruit({ name: '', price: 0, description: '', stock: 0 });
-      setIsFormVisible(false);
-      window.location.reload(); 
-    } catch (error) {
-      console.error(error);
-      alert('เกิดข้อผิดพลาด! (คุณอาจไม่มีสิทธิ์)');
+      return JSON.parse(atob(token.split('.')[1]));
+    } catch (e) {
+      return null;
     }
   };
 
-  // --- Logic ตะกร้าสินค้า ---
+  // 1. โหลด Token และเช็ค Admin
+  useEffect(() => {
+    const savedToken = localStorage.getItem('token');
+    if (savedToken) {
+      setToken(savedToken);
+      const decoded = parseJwt(savedToken);
+      // เช็คว่าเป็น admin หรือไม่ (ดูทั้ง username และ role เผื่อไว้)
+      if (decoded && (decoded.username === 'admin' || decoded.role === 'admin')) {
+        setIsAdmin(true);
+      }
+    }
+  }, [token]);
+
+  // 2. Logout
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    setToken(null);
+    setCart([]);
+    setIsAdmin(false);
+    setPage('shop');
+    window.location.reload();
+  };
+
+  // 3. จัดการตะกร้าสินค้า
   const handleAddToCart = (fruit: any) => {
     setCart((prev) => {
-      const exist = prev.find(i => i.id === fruit.id);
-      return exist 
-        ? prev.map(i => i.id === fruit.id ? {...i, quantity: i.quantity + 1} : i) 
-        : [...prev, {...fruit, quantity: 1}];
+      const found = prev.find((i) => i.id === fruit.id);
+      if (found) return prev.map((i) => (i.id === fruit.id ? { ...i, quantity: i.quantity + 1 } : i));
+      return [...prev, { ...fruit, quantity: 1 }];
     });
   };
 
   const handleIncrease = (id: number) => {
-    setCart(prev => prev.map(i => i.id === id ? {...i, quantity: i.quantity + 1} : i));
+    setCart((prev) => prev.map((i) => (i.id === id ? { ...i, quantity: i.quantity + 1 } : i)));
   };
 
   const handleDecrease = (id: number) => {
-    setCart(prev => prev.map(i => i.id === id ? {...i, quantity: i.quantity - 1} : i).filter(i => i.quantity > 0));
+    setCart((prev) => 
+      prev.map((i) => (i.id === id ? { ...i, quantity: i.quantity - 1 } : i))
+          .filter((i) => i.quantity > 0)
+    );
   };
 
-  const handleRemove = (id: number) => {
-    setCart(prev => prev.filter(i => i.id !== id));
-  };
+  const handleRemoveFromCart = (id: number) => setCart((prev) => prev.filter((i) => i.id !== id));
 
+  // 4. สั่งซื้อ (Checkout)
   const handleCheckout = async () => {
-    if (cart.length === 0) return alert('ตะกร้าว่างเปล่า!');
-    if (!confirm('ยืนยันการสั่งซื้อ?')) return;
-    try {
-      await axios.post('http://localhost:3000/orders', 
-        { items: cart.map(i => ({ fruitId: i.id, quantity: i.quantity })) },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      alert('สั่งซื้อสำเร็จ! 🎉');
-      setCart([]);
-      setPage('orders')
+    if (cart.length === 0) return alert("ตะกร้าว่างเปล่า!");
+    const total = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
+    if (!confirm(`ยืนยันการสั่งซื้อ ฿${total}?`)) return;
 
-    } catch (error: any) {
-      console.error("Checkout Error:", error);
-      const message = error.response?.data?.message || "เกิดข้อผิดพลาด";
-      alert(`❌ สั่งซื้อไม่สำเร็จ: ${message}`);
+    try {
+      await axios.post('http://localhost:3000/orders', {
+        items: cart.map(i => ({ fruitId: i.id, quantity: i.quantity }))
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      
+      alert("🎉 สั่งซื้อสำเร็จ!");
+      setCart([]);
+      setPage('orders');
+    } catch (err: any) {
+      alert(`❌ ผิดพลาด: ${err.response?.data?.message || 'Unknown error'}`);
     }
   };
 
   return (
-    <div style={{ fontFamily: 'sans-serif', maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
-      
+    <div style={{ fontFamily: 'sans-serif', maxWidth: '1000px', margin: '0 auto', padding: '20px' }}>
       {/* Header */}
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 15, borderBottom: '1px solid #eee' }}>
-        <div>
-          <h1 style={{ color: '#ff6b6b', margin: '0 0 5px 0', cursor: 'pointer' }} onClick={() => setPage('shop')}>
-            🍊 Fruit Store
-          </h1>
-          {currentUser && (
-            <span style={{ fontSize: '0.9em', color: '#666' }}>
-              ผู้ใช้: <strong style={{ color: isAdmin ? '#007bff' : '#333' }}>{currentUser}</strong> {isAdmin ? '(👑 Admin)' : '(ลูกค้า)'}
-            </span>
-          )}
-        </div>
-        
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30, borderBottom: '1px solid #eee', paddingBottom: 10 }}>
+        <h1 style={{ margin: 0, color: '#ff6b6b', cursor: 'pointer' }} onClick={() => setPage('shop')}>
+          🍊 Fruit Store {isAdmin && <span style={{fontSize: '0.5em', background: 'gold', padding: '2px 5px', borderRadius: 4, color: '#333'}}>👑 Admin</span>}
+        </h1>
         {token && (
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            {/* ส่วน Admin Button (จาก Upstream) */}
-            {isAdmin && (
-              <button 
-                onClick={() => setIsFormVisible(!isFormVisible)}
-                style={{ background: isFormVisible ? '#6c757d' : '#007bff', color: 'white', border: 'none', padding: '10px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
-              >
-                {isFormVisible ? 'ปิดฟอร์ม ❌' : '+ เพิ่มสินค้าใหม่'}
-              </button>
-            )}
-
-            {/* ปุ่มประวัติการสั่งซื้อ (จาก Local) */}
-            <button onClick={() => setPage('orders')} style={{ background: 'none', border: '1px solid #ccc', borderRadius: 5, padding: '8px 15px', cursor: 'pointer', color: '#555' }}>
-              📜 ประวัติ
-            </button>
-
-            {/* ตะกร้าสินค้า (จาก Local) */}
-            <span>ตะกร้า: <b>{cart.reduce((s, i) => s + i.quantity, 0)}</b> ชิ้น</span>
-
-            {/* ปุ่ม Logout */}
-            <button onClick={handleLogout} style={{ background: '#dc3545', color: 'white', border: 'none', padding: '10px 15px', borderRadius: '5px', cursor: 'pointer' }}>
-              Logout 
-            </button>
+            <button onClick={() => setPage('orders')} style={{ background: 'none', border: '1px solid #ccc', borderRadius: 5, padding: '8px 15px', cursor: 'pointer' }}>📜 ประวัติ</button>
+            {page === 'shop' && <span>🛒 <b>{cart.reduce((s, i) => s + i.quantity, 0)}</b> ชิ้น</span>}
+            <button onClick={handleLogout} style={{ backgroundColor: '#dc3545', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '5px', cursor: 'pointer' }}>Logout</button>
           </div>
         )}
       </div>
 
       {!token ? (
         <Login setToken={setToken} />
+      ) : page === 'orders' ? (
+        <MyOrders token={token} onBack={() => setPage('shop')} />
       ) : (
-        page === 'orders' ? (
-          // ถ้า page == 'orders' ให้โชว์หน้า MyOrders
-          <MyOrders token={token} onBack={() => setPage('shop')} />
-        ) : (
-        <div>
-          {/* ฟอร์ม Admin */}
-          {isAdmin && isFormVisible && (
-            <div style={{ background: '#f8f9fa', padding: 25, borderRadius: 10, marginBottom: 30, border: '1px solid #dee2e6' }}>
-              <h3 style={{ marginTop: 0, color: '#007bff' }}>🍌 เพิ่มสินค้าใหม่ (Admin Only)</h3>
-              <form onSubmit={handleAddFruit} style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 15 }}>
-                <input placeholder="ชื่อสินค้า" value={newFruit.name} onChange={e => setNewFruit({...newFruit, name: e.target.value})} required style={{padding: 10, border: '1px solid #ccc', borderRadius: 4}} />
-                <input type="number" placeholder="ราคา" value={newFruit.price || ''} onChange={e => setNewFruit({...newFruit, price: +e.target.value})} required style={{padding: 10, border: '1px solid #ccc', borderRadius: 4}} />
-                <input placeholder="รายละเอียด" value={newFruit.description} onChange={e => setNewFruit({...newFruit, description: e.target.value})} style={{padding: 10, gridColumn: 'span 2', border: '1px solid #ccc', borderRadius: 4}} />
-                <input type="number" placeholder="จำนวนสต็อก" value={newFruit.stock || ''} onChange={e => setNewFruit({...newFruit, stock: +e.target.value})} required style={{padding: 10, border: '1px solid #ccc', borderRadius: 4}} />
-                <button type="submit" style={{ gridColumn: 'span 2', background: '#28a745', color: 'white', border: 'none', padding: 12, borderRadius: 5, cursor: 'pointer', fontWeight: 'bold' }}>บันทึก ✅</button>
-              </form>
-            </div>
-          )}
-
-          <div style={{ display: 'flex', gap: '30px', flexDirection: 'row-reverse', flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: '350px' }}>
-              <Cart cart={cart} onRemove={handleRemove} onCheckout={handleCheckout} onIncrease={handleIncrease} onDecrease={handleDecrease} />
-            </div>
-            <div style={{ flex: 2, minWidth: '350px' }}>
-              <FruitList token={token} onAddToCart={handleAddToCart} />
-            </div>
+        <div style={{ display: 'flex', gap: '40px', flexDirection: 'row-reverse' }}>
+          <div style={{ flex: 1, minWidth: '350px' }}>
+            <Cart cart={cart} onRemove={handleRemoveFromCart} onCheckout={handleCheckout} onIncrease={handleIncrease} onDecrease={handleDecrease} />
+          </div>
+          <div style={{ flex: 2 }}>
+            {/* ✅ ส่ง isAdmin ไปให้ FruitList เพื่อจัดการสิทธิ์ เพิ่ม/ลบ */}
+            <FruitList token={token} onAddToCart={handleAddToCart} isAdmin={isAdmin} />
           </div>
         </div>
-        ) 
-      )} 
+      )}
     </div>
   );
 }
