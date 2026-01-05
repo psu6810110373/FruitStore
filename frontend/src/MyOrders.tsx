@@ -6,7 +6,7 @@ import axios from 'axios';
 interface OrderItem {
   id: number;
   quantity: number;
-  priceAtTime: number;
+  price_at_purchase: number;
   fruit: {
     name: string;
     price: number;
@@ -15,9 +15,9 @@ interface OrderItem {
 
 interface Order {
   id: number;
-  totalAmount: number;
+  total: number;
   status: string;
-  createdAt: string;
+  created_at: string;
   items: OrderItem[];
 }
 
@@ -70,7 +70,7 @@ export default function MyOrders({ token, onBack }: MyOrdersProps) {
                 <div>
                   <strong>Order #{order.id}</strong>
                   <span style={{ marginLeft: 10, fontSize: '0.9em', color: '#666' }}>
-                    {new Date(order.createdAt).toLocaleString('th-TH')}
+                    {new Date(order.created_at).toLocaleString('th-TH')}
                   </span>
                 </div>
                 <div>
@@ -81,7 +81,7 @@ export default function MyOrders({ token, onBack }: MyOrdersProps) {
                   }}>
                     {order.status}
                   </span>
-                  <strong style={{ color: 'green' }}>฿{order.totalAmount}</strong>
+                  <strong style={{ color: 'green' }}>฿{order.total}</strong>
                 </div>
               </div>
 
@@ -89,7 +89,7 @@ export default function MyOrders({ token, onBack }: MyOrdersProps) {
               <ul style={{ paddingLeft: 20, margin: 0, color: '#555' }}>
                 {order.items.map(item => (
                   <li key={item.id}>
-                    {item.fruit.name} (x{item.quantity}) - {item.priceAtTime * item.quantity} บาท
+                    {item.fruit.name} (x{item.quantity}) - {item.price_at_purchase * item.quantity} บาท
                   </li>
                 ))}
               </ul>
