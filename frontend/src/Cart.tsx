@@ -1,5 +1,3 @@
-import React from 'react';
-
 // Interface ของสินค้าในตะกร้า
 export interface CartItem {
   id: number;

@@ -3,12 +3,14 @@ import axios from 'axios';
 import Login from './Login';
 import FruitList from './FruitList';
 import Cart, {type CartItem } from './Cart';
+import MyOrders from './MyOrders';
 
 function App() {
   // --- State หลัก ---
   const [token, setToken] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<string>(''); // เก็บชื่อคนล็อกอิน
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [page, setPage] = useState<'shop' | 'orders'>('shop');
 
   // --- State สำหรับ Admin เพิ่มสินค้า ---
   const [newFruit, setNewFruit] = useState({ name: '', price: 0, description: '', stock: 0 });
@@ -29,7 +31,8 @@ function App() {
     setToken(null);
     setCurrentUser('');
     setCart([]);
-    window.location.reload();
+    setPage('shop')
+    window.location.reload(); // รีโหลดล้างค่าทุกอย่าง
   };
 
   // ✅ 3. เช็คว่าเป็น Admin หรือไม่? (ใช้ .toLowerCase เผื่อพิมพ์ตัวใหญ่เล็ก)
@@ -73,7 +76,7 @@ function App() {
   const handleRemove = (id: number) => {
     setCart(prev => prev.filter(i => i.id !== id));
   };
-  
+
   const handleCheckout = async () => {
     if (cart.length === 0) return alert('ตะกร้าว่างเปล่า!');
     if (!confirm('ยืนยันการสั่งซื้อ?')) return;
@@ -84,17 +87,24 @@ function App() {
       );
       alert('สั่งซื้อสำเร็จ! 🎉');
       setCart([]);
-      window.location.reload();
-    } catch (e) { alert('สั่งซื้อไม่สำเร็จ'); }
+      setPage('orders')
+
+    } catch (error: any) {
+      console.error("Checkout Error:", error);
+      const message = error.response?.data?.message || "เกิดข้อผิดพลาด";
+      alert(`❌ สั่งซื้อไม่สำเร็จ: ${message}`);
+    }
   };
 
   return (
     <div style={{ fontFamily: 'sans-serif', maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
       
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 15, borderBottom: '1px solid #eee' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 15, borderBottom: '1px solid #eee' }}>
         <div>
-          <h1 style={{ color: '#ff6b6b', margin: '0 0 5px 0' }}>🍊 Fruit Store</h1>
+          <h1 style={{ color: '#ff6b6b', margin: '0 0 5px 0', cursor: 'pointer' }} onClick={() => setPage('shop')}>
+            🍊 Fruit Store
+          </h1>
           {currentUser && (
             <span style={{ fontSize: '0.9em', color: '#666' }}>
               ผู้ใช้: <strong style={{ color: isAdmin ? '#007bff' : '#333' }}>{currentUser}</strong> {isAdmin ? '(👑 Admin)' : '(ลูกค้า)'}
@@ -104,7 +114,7 @@ function App() {
         
         {token && (
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            {/* ปุ่ม Admin: แสดงเฉพาะ admin */}
+            {/* ส่วน Admin Button (จาก Upstream) */}
             {isAdmin && (
               <button 
                 onClick={() => setIsFormVisible(!isFormVisible)}
@@ -113,8 +123,18 @@ function App() {
                 {isFormVisible ? 'ปิดฟอร์ม ❌' : '+ เพิ่มสินค้าใหม่'}
               </button>
             )}
+
+            {/* ปุ่มประวัติการสั่งซื้อ (จาก Local) */}
+            <button onClick={() => setPage('orders')} style={{ background: 'none', border: '1px solid #ccc', borderRadius: 5, padding: '8px 15px', cursor: 'pointer', color: '#555' }}>
+              📜 ประวัติ
+            </button>
+
+            {/* ตะกร้าสินค้า (จาก Local) */}
+            <span>ตะกร้า: <b>{cart.reduce((s, i) => s + i.quantity, 0)}</b> ชิ้น</span>
+
+            {/* ปุ่ม Logout */}
             <button onClick={handleLogout} style={{ background: '#dc3545', color: 'white', border: 'none', padding: '10px 15px', borderRadius: '5px', cursor: 'pointer' }}>
-              Logout 🚪
+              Logout 
             </button>
           </div>
         )}
@@ -123,6 +143,10 @@ function App() {
       {!token ? (
         <Login setToken={setToken} />
       ) : (
+        page === 'orders' ? (
+          // ถ้า page == 'orders' ให้โชว์หน้า MyOrders
+          <MyOrders token={token} onBack={() => setPage('shop')} />
+        ) : (
         <div>
           {/* ฟอร์ม Admin */}
           {isAdmin && isFormVisible && (
@@ -147,7 +171,8 @@ function App() {
             </div>
           </div>
         </div>
-      )}
+        ) 
+      )} 
     </div>
   );
 }
