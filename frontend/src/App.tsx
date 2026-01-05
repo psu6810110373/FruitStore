@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import axios from 'axios';
 import Login from './Login';
 import FruitList from './FruitList';
 import Cart, {type CartItem } from './Cart';
@@ -7,20 +8,21 @@ function App() {
   const [token, setToken] = useState<string | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
 
-  // โหลด Token
+  // 1. โหลด Token เก่าตอนเปิดเว็บ
   useEffect(() => {
     const savedToken = localStorage.getItem('token');
     if (savedToken) setToken(savedToken);
   }, []);
 
+  // 2. ฟังก์ชัน Logout
   const handleLogout = () => {
     localStorage.removeItem('token');
     setToken(null);
     setCart([]);
-    window.location.reload();
+    window.location.reload(); // รีโหลดล้างค่าทุกอย่าง
   };
 
-  // ✅ 1. เพิ่มสินค้า (ใช้สำหรับหน้า FruitList)
+  // 3. ฟังก์ชันเพิ่มสินค้าลงตะกร้า (จากหน้า FruitList)
   const handleAddToCart = (fruit: any) => {
     setCart((prevCart) => {
       const existingItem = prevCart.find((item) => item.id === fruit.id);
@@ -34,7 +36,7 @@ function App() {
     });
   };
 
-  // ✅ 2. เพิ่มจำนวน (ปุ่ม + ในตะกร้า)
+  // 4. ฟังก์ชันเพิ่มจำนวน (ปุ่ม +)
   const handleIncrease = (id: number) => {
     setCart((prevCart) =>
       prevCart.map((item) =>
@@ -43,7 +45,7 @@ function App() {
     );
   };
 
-  // ✅ 3. ลดจำนวน (ปุ่ม - ในตะกร้า)
+  // 5. ฟังก์ชันลดจำนวน (ปุ่ม -)
   const handleDecrease = (id: number) => {
     setCart((prevCart) =>
       prevCart
@@ -53,17 +55,50 @@ function App() {
           }
           return item;
         })
-        .filter((item) => item.quantity > 0) // ถ้าเหลือ 0 ให้ลบทิ้งไปเลย
+        .filter((item) => item.quantity > 0) // ถ้า 0 ลบทิ้ง
     );
   };
 
+  // 6. ฟังก์ชันลบสินค้า
   const handleRemoveFromCart = (id: number) => {
     setCart((prevCart) => prevCart.filter((item) => item.id !== id));
   };
 
-  const handleCheckout = () => {
-    if (confirm(`ยืนยันการสั่งซื้อยอดรวม ${cart.reduce((sum, item) => sum + item.price * item.quantity, 0)} บาท?`)) {
-      alert("เตรียมเชื่อมต่อ API สั่งซื้อครับ! 🚀");
+  // 7. 🚀 ฟังก์ชันสั่งซื้อ (ยิง API ไปหา Backend)
+  const handleCheckout = async () => {
+    const totalAmount = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+    if (cart.length === 0) {
+      alert("ตะกร้าว่างเปล่า!");
+      return;
+    }
+
+    if (!confirm(`ยืนยันการสั่งซื้อยอดรวม ฿${totalAmount} ใช่หรือไม่?`)) {
+      return;
+    }
+
+    try {
+      // แปลงโครงสร้างข้อมูลให้ตรงกับที่ Backend ต้องการ
+      const orderData = {
+        items: cart.map(item => ({
+          fruitId: item.id,
+          quantity: item.quantity
+        }))
+      };
+
+      // ยิง API
+      await axios.post('http://localhost:3000/orders', orderData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      alert("🎉 สั่งซื้อสำเร็จ! ขอบคุณที่อุดหนุนครับ");
+      setCart([]);
+      window.location.reload(); // รีโหลดเพื่ออัปเดตสต็อก
+
+    } catch (error: any) {
+      console.error("Checkout Error:", error);
+      const message = error.response?.data?.message || "เกิดข้อผิดพลาด";
+      alert(`❌ สั่งซื้อไม่สำเร็จ: ${message}`);
     }
   };
 
@@ -88,14 +123,13 @@ function App() {
       ) : (
         <div style={{ display: 'flex', gap: '40px', flexDirection: 'row-reverse' }}>
           
-          {/* ส่งฟังก์ชันเพิ่ม/ลด ไปให้ Cart */}
           <div style={{ flex: 1, minWidth: '350px' }}>
             <Cart 
               cart={cart} 
               onRemove={handleRemoveFromCart} 
               onCheckout={handleCheckout} 
-              onIncrease={handleIncrease} // 👈 ส่งเพิ่ม
-              onDecrease={handleDecrease} // 👈 ส่งเพิ่ม
+              onIncrease={handleIncrease} 
+              onDecrease={handleDecrease}
             />
           </div>
 
@@ -105,7 +139,6 @@ function App() {
 
         </div>
       )}
-
     </div>
   );
 }
