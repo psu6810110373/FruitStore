@@ -98,4 +98,39 @@ export class OrdersService {
       order: { created_at: 'DESC' }, // ใหม่สุดขึ้นก่อน
     });
   }
+
+  async uploadSlip(id: number, filename: string) {
+    const order = await this.ordersRepository.findOneBy({ id });
+    if (!order) {
+      throw new NotFoundException('ไม่พบออเดอร์นี้');
+    }
+
+    // อัปเดตข้อมูล
+    order.slip_image = filename; // บันทึกชื่อไฟล์
+    order.status = OrderStatus.WAITING_VERIFY; // เปลี่ยนสถานะเป็น "รอตรวจสอบ"
+
+    return this.ordersRepository.save(order);
+  }
+
+  findAllOrdersForAdmin() {
+    return this.ordersRepository.find({
+      relations: {
+        user: true, // ดึงข้อมูลคนสั่งมา
+        items: {
+          fruit: true,
+        },
+      },
+      order: {
+        id: 'DESC', // เรียงจากล่าสุดไปเก่า
+      },
+    });
+  }
+
+  async approveOrder(id: number) {
+    const order = await this.ordersRepository.findOneBy({ id });
+    if (!order) throw new NotFoundException('Order not found');
+
+    order.status = OrderStatus.COMPLETED; // เปลี่ยนสถานะเป็นเสร็จสิ้น
+    return this.ordersRepository.save(order);
+  }
 }

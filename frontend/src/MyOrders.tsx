@@ -24,9 +24,10 @@ interface Order {
 interface MyOrdersProps {
   token: string;
   onBack: () => void; // ฟังก์ชันกดกลับหน้าหลัก
+  onPay: (order: any) => void; //รับ props เพิ่ม
 }
 
-export default function MyOrders({ token, onBack }: MyOrdersProps) {
+export default function MyOrders({ token, onBack, onPay }: MyOrdersProps) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -82,6 +83,14 @@ export default function MyOrders({ token, onBack }: MyOrdersProps) {
                     {order.status}
                   </span>
                   <strong style={{ color: 'green' }}>฿{order.total}</strong>
+                  {order.status === 'PENDING' && (
+                    <button 
+                      onClick={() => onPay(order)}
+                      style={{ background: '#007bff', color: 'white', border: 'none', borderRadius: 5, padding: '8px 10px', cursor: 'pointer', fontSize: '0.8em', marginLeft: 10 }}
+                    >
+                      แจ้งชำระเงิน 💸
+                    </button>
+                  )}
                 </div>
               </div>
 

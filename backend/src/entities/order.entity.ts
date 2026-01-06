@@ -6,6 +6,7 @@ import { OrderItem } from './order-item.entity'
 
 export enum OrderStatus {
   PENDING = 'PENDING',
+  WAITING_VERIFY = 'WAITING_VERIFY',
   COMPLETED = 'COMPLETED',
   CANCELLED = 'CANCELLED',
 }
@@ -31,6 +32,9 @@ export class Order {
 
   @CreateDateColumn()
   created_at: Date;
+
+  @Column({ nullable: true }) 
+  slip_image: string;
 
   // Relation: Order นี้มีรายการสินค้าอะไรบ้าง
   @OneToMany(() => OrderItem, (orderItem) => orderItem.order)

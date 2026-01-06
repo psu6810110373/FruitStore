@@ -4,12 +4,21 @@ import Login from './Login';
 import FruitList from './FruitList';
 import Cart, { type CartItem } from './Cart';
 import MyOrders from './MyOrders';
+import Payment from './Payment';
+import AdminOrders from './AdminOrders';
 
 function App() {
   const [token, setToken] = useState<string | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [page, setPage] = useState<'shop' | 'orders'>('shop');
+  const [page, setPage] = useState<'shop' | 'orders' | 'payment' | 'admin-orders'>('shop');  
   const [isAdmin, setIsAdmin] = useState(false); // ✅ สถานะ Admin
+  const [orderToPay, setOrderToPay] = useState<any>(null);
+
+
+  const handleGoToPayment = (order: any) => {
+    setOrderToPay(order);
+    setPage('payment');
+  };
 
   // ฟังก์ชันแกะ Token เพื่อดูว่าใคร Login
   const parseJwt = (token: string) => {
@@ -91,10 +100,21 @@ function App() {
         <h1 style={{ margin: 0, color: '#ff6b6b', cursor: 'pointer' }} onClick={() => setPage('shop')}>
           🍊 Fruit Store {isAdmin && <span style={{fontSize: '0.5em', background: 'gold', padding: '2px 5px', borderRadius: 4, color: '#333'}}>👑 Admin</span>}
         </h1>
+
         {token && (
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             <button onClick={() => setPage('orders')} style={{ background: 'none', border: '1px solid #ccc', borderRadius: 5, padding: '8px 15px', cursor: 'pointer' }}>📜 ประวัติ</button>
             {page === 'shop' && <span>🛒 <b>{cart.reduce((s, i) => s + i.quantity, 0)}</b> ชิ้น</span>}
+
+             {/* ปุ่มสำหรับ Admin เท่านั้น */}
+            {isAdmin && (
+              <button 
+                onClick={() => setPage('admin-orders')}
+                style={{ background: '#ff9800', color: 'white', border: 'none', padding: '8px 15px', borderRadius: 5, cursor: 'pointer', fontWeight: 'bold' }}
+              >
+                👮‍♂️ จัดการออเดอร์
+              </button>
+            )}
             <button onClick={handleLogout} style={{ backgroundColor: '#dc3545', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '5px', cursor: 'pointer' }}>Logout</button>
           </div>
         )}
@@ -102,9 +122,18 @@ function App() {
 
       {!token ? (
         <Login setToken={setToken} />
-      ) : page === 'orders' ? (
-        <MyOrders token={token} onBack={() => setPage('shop')} />
-      ) : (
+      ) : page === 'admin-orders' ? (
+          <AdminOrders token={token} onBack={() => setPage('shop')} />
+        ) : page === 'orders' ? (
+        <MyOrders token={token} onBack={() => setPage('shop')} onPay={handleGoToPayment} />
+      ) : page === 'payment' && orderToPay ? (
+        <Payment 
+            token={token} 
+            order={orderToPay} 
+            onBack={() => setPage('orders')} 
+            onSuccess={() => setPage('orders')} 
+          />
+        ) : (
         <div style={{ display: 'flex', gap: '40px', flexDirection: 'row-reverse' }}>
           <div style={{ flex: 1, minWidth: '350px' }}>
             <Cart cart={cart} onRemove={handleRemoveFromCart} onCheckout={handleCheckout} onIncrease={handleIncrease} onDecrease={handleDecrease} />
