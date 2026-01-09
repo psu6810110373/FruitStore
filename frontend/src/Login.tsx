@@ -3,9 +3,10 @@ import axios from 'axios';
 
 interface LoginProps {
   setToken: (token: string) => void;
+  onSwitchToRegister: () => void;
 }
 
-export default function Login({ setToken }: LoginProps) {
+export default function Login({ setToken, onSwitchToRegister }: LoginProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -45,7 +46,7 @@ export default function Login({ setToken }: LoginProps) {
       <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 15, marginTop: 20 }}>
         <input
           type="text"
-          placeholder="Username (เช่น admin)"
+          placeholder="Username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           style={{ padding: 12, borderRadius: 5, border: '1px solid #ccc', fontSize: '1em' }}
@@ -63,6 +64,15 @@ export default function Login({ setToken }: LoginProps) {
       </form>
       
       {error && <div style={{ color: '#dc3545', marginTop: 15, background: '#ffe6e6', padding: 10, borderRadius: 5 }}>{error}</div>}
+      <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid #eee', fontSize: '0.9em' }}>
+        ยังไม่มีบัญชีสมาชิก?{' '}
+        <span 
+          onClick={onSwitchToRegister}
+          style={{ color: '#007bff', cursor: 'pointer', textDecoration: 'underline', fontWeight: 'bold' }}
+        >
+          สมัครสมาชิกใหม่ที่นี่
+        </span>
+      </div>
     </div>
   );
 }

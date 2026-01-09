@@ -6,6 +6,7 @@ import Cart, { type CartItem } from './Cart';
 import MyOrders from './MyOrders';
 import Payment from './Payment';
 import AdminOrders from './AdminOrders';
+import Register from './Register';
 
 function App() {
   const [token, setToken] = useState<string | null>(null);
@@ -13,7 +14,7 @@ function App() {
   const [page, setPage] = useState<'shop' | 'orders' | 'payment' | 'admin-orders'>('shop');  
   const [isAdmin, setIsAdmin] = useState(false); // ✅ สถานะ Admin
   const [orderToPay, setOrderToPay] = useState<any>(null);
-
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
 
   const handleGoToPayment = (order: any) => {
     setOrderToPay(order);
@@ -121,7 +122,17 @@ function App() {
       </div>
 
       {!token ? (
-        <Login setToken={setToken} />
+        // ✅ 3. แก้ไขเงื่อนไขตรงนี้: สลับ Login <-> Register
+        authMode === 'login' ? (
+          <Login 
+            setToken={setToken} 
+            onSwitchToRegister={() => setAuthMode('register')} // ส่งฟังก์ชันไปให้ Login
+          />
+        ) : (
+          <Register 
+            onSwitchToLogin={() => setAuthMode('login')} // ส่งฟังก์ชันไปให้ Register
+          />
+        )
       ) : page === 'admin-orders' ? (
           <AdminOrders token={token} onBack={() => setPage('shop')} />
         ) : page === 'orders' ? (
@@ -139,7 +150,6 @@ function App() {
             <Cart cart={cart} onRemove={handleRemoveFromCart} onCheckout={handleCheckout} onIncrease={handleIncrease} onDecrease={handleDecrease} />
           </div>
           <div style={{ flex: 2 }}>
-            {/* ✅ ส่ง isAdmin ไปให้ FruitList เพื่อจัดการสิทธิ์ เพิ่ม/ลบ */}
             <FruitList token={token} onAddToCart={handleAddToCart} isAdmin={isAdmin} />
           </div>
         </div>
