@@ -6,6 +6,7 @@ import { Repository } from 'typeorm';
 import { User, UserRole } from '../entities/user.entity'; 
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AuthService {
@@ -13,6 +14,7 @@ export class AuthService {
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     private jwtService: JwtService,
+    private configService: ConfigService,
   ) {}
 
   async register(username: string, password: string): Promise<User> {
@@ -21,8 +23,8 @@ export class AuthService {
       throw new ConflictException('Username already exists');
     }
 
-    const ADMIN_USERNAME = 'admin';
-    const ADMIN_PASSWORD = '1234'
+    const ADMIN_USERNAME = this.configService.get<string>('ADMIN_USERNAME');
+    const ADMIN_PASSWORD = this.configService.get<string>('ADMIN_PASSWORD');
 
     let role = UserRole.USER
     if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
